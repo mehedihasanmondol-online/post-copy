@@ -1,13 +1,11 @@
 let uiContainer = null;
-let textarea = null;
-
-// Use the origin + pathname to ignore query strings/hashes if preferred, but href is fine.
 const STORAGE_KEY = `post_copy_${window.location.href.split('?')[0].split('#')[0]}`;
+const PAGE_TITLE = document.title || window.location.hostname;
 
 // --- Clipboard Logic ---
 document.addEventListener("copy", (e) => {
   // If the user is copying from our own UI, don't intercept/append it to itself!
-  if (e.target && e.target.id === "post-copy-clipboard-textarea") {
+  if (e.target && e.target.classList && e.target.classList.contains("post-copy-clipboard-textarea")) {
     return;
   }
 
@@ -30,18 +28,31 @@ function appendData(text) {
   if (statusEl) statusEl.textContent = "Saving...";
 
   chrome.storage.local.get([STORAGE_KEY], (result) => {
-    let currentText = result[STORAGE_KEY] || "";
-    if (currentText.length > 0) {
-      currentText += "\n\n";
-    }
-    currentText += text;
+    let currentData = result[STORAGE_KEY];
     
-    chrome.storage.local.set({ [STORAGE_KEY]: currentText }, () => {
-      // Update UI if it's open
-      if (textarea) {
-        textarea.value = currentText;
-        updateCounters();
-        scrollToBottom();
+    // Fallback if data exists as old string format
+    if (typeof currentData === 'string') {
+      currentData = { text: currentData, title: PAGE_TITLE, timestamp: Date.now() };
+    }
+    
+    if (!currentData) {
+      currentData = { text: "", title: PAGE_TITLE, timestamp: Date.now() };
+    }
+
+    if (currentData.text.length > 0) {
+      currentData.text += "\n\n";
+    }
+    currentData.text += text;
+    
+    // Keep original timestamp if it exists, otherwise set it
+    if (!currentData.timestamp) {
+       currentData.timestamp = Date.now();
+    }
+    
+    chrome.storage.local.set({ [STORAGE_KEY]: currentData }, () => {
+      // Re-render UI if it's open
+      if (uiContainer && uiContainer.style.display !== "none") {
+        loadDataToUI(); // Re-render the whole list to show changes
       }
       
       if (statusEl) {
@@ -70,40 +81,12 @@ function toggleUI() {
       uiContainer.style.display = "none";
     }
   } else {
-    createUI();
+    createUIWrapper();
     loadDataToUI();
   }
 }
 
-function loadDataToUI() {
-  chrome.storage.local.get([STORAGE_KEY], (result) => {
-    if (textarea) {
-      textarea.value = result[STORAGE_KEY] || "";
-      updateCounters();
-      scrollToBottom();
-    }
-  });
-}
-
-function updateCounters() {
-  if (!textarea) return;
-  const text = textarea.value;
-  const charCount = text.length;
-  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-  
-  const countersEl = document.getElementById("post-copy-clipboard-counters");
-  if (countersEl) {
-    countersEl.textContent = `${wordCount} words | ${charCount} chars`;
-  }
-}
-
-function scrollToBottom() {
-  if (textarea) {
-    textarea.scrollTop = textarea.scrollHeight;
-  }
-}
-
-function createUI() {
+function createUIWrapper() {
   uiContainer = document.createElement("div");
   uiContainer.id = "post-copy-clipboard-container";
 
@@ -135,33 +118,24 @@ function createUI() {
   header.appendChild(headerLeft);
   header.appendChild(closeBtn);
 
-  // Textarea
-  textarea = document.createElement("textarea");
-  textarea.id = "post-copy-clipboard-textarea";
-  textarea.placeholder = "Copied text will appear here...";
-  textarea.addEventListener("input", () => {
-    // Save manual edits
-    chrome.storage.local.set({ [STORAGE_KEY]: textarea.value });
-    updateCounters();
-  });
+  // Accordion Container
+  const accordionContainer = document.createElement("div");
+  accordionContainer.id = "post-copy-accordion-container";
 
-  // Counters
-  const countersDiv = document.createElement("div");
-  countersDiv.id = "post-copy-clipboard-counters";
-  countersDiv.textContent = "0 words | 0 chars";
-
-  // Footer
+  // Global Footer
   const footer = document.createElement("div");
   footer.id = "post-copy-clipboard-footer";
 
-  const clearBtn = document.createElement("button");
-  clearBtn.id = "post-copy-btn-clear";
-  clearBtn.className = "post-copy-btn";
-  clearBtn.textContent = "Clear";
-  clearBtn.onclick = () => {
-    chrome.storage.local.set({ [STORAGE_KEY]: "" }, () => {
-      textarea.value = "";
-      updateCounters();
+  const clearAllBtn = document.createElement("button");
+  clearAllBtn.id = "post-copy-btn-clear";
+  clearAllBtn.className = "post-copy-btn";
+  clearAllBtn.textContent = "Clear All";
+  clearAllBtn.onclick = () => {
+    chrome.storage.local.get(null, (items) => {
+      const keysToRemove = Object.keys(items).filter(k => k.startsWith("post_copy_"));
+      chrome.storage.local.remove(keysToRemove, () => {
+        loadDataToUI();
+      });
     });
   };
 
@@ -170,23 +144,157 @@ function createUI() {
   copyAllBtn.className = "post-copy-btn";
   copyAllBtn.textContent = "Copy All";
   copyAllBtn.onclick = () => {
-    navigator.clipboard.writeText(textarea.value).then(() => {
-      const originalText = copyAllBtn.textContent;
-      copyAllBtn.textContent = "Copied!";
-      setTimeout(() => { copyAllBtn.textContent = originalText; }, 2000);
+    // Aggregate all text chronologically
+    chrome.storage.local.get(null, (items) => {
+      const clipboards = [];
+      for (const [key, val] of Object.entries(items)) {
+        if (key.startsWith("post_copy_")) {
+           let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
+           clipboards.push(data);
+        }
+      }
+      clipboards.sort((a, b) => a.timestamp - b.timestamp);
+      
+      if (clipboards.length === 0) return;
+      
+      const allText = clipboards.map(c => c.text).join("\n\n---\n\n");
+      
+      navigator.clipboard.writeText(allText).then(() => {
+        const originalText = copyAllBtn.textContent;
+        copyAllBtn.textContent = "Copied!";
+        setTimeout(() => { copyAllBtn.textContent = originalText; }, 2000);
+      });
     });
   };
 
-  footer.appendChild(clearBtn);
+  footer.appendChild(clearAllBtn);
   footer.appendChild(copyAllBtn);
 
   uiContainer.appendChild(header);
-  uiContainer.appendChild(textarea);
-  uiContainer.appendChild(countersDiv);
+  uiContainer.appendChild(accordionContainer);
   uiContainer.appendChild(footer);
   document.body.appendChild(uiContainer);
 
   makeDraggable(uiContainer, header);
+}
+
+function loadDataToUI() {
+  const container = document.getElementById("post-copy-accordion-container");
+  if (!container) return;
+  container.innerHTML = ""; // Clear existing
+
+  chrome.storage.local.get(null, (items) => {
+    const clipboards = [];
+    for (const [key, val] of Object.entries(items)) {
+      if (key.startsWith("post_copy_")) {
+         let data = val;
+         if (typeof val === 'string') {
+            data = { text: val, title: "Unknown Page", timestamp: 0 };
+         }
+         clipboards.push({ key, data });
+      }
+    }
+
+    // Sort chronologically (oldest timestamp first)
+    clipboards.sort((a, b) => a.data.timestamp - b.data.timestamp);
+
+    if (clipboards.length === 0) {
+      container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
+      return;
+    }
+
+    clipboards.forEach((item, index) => {
+      const isCurrentPage = item.key === STORAGE_KEY;
+      createAccordionItem(container, item.key, item.data, isCurrentPage, index + 1);
+    });
+  });
+}
+
+function createAccordionItem(container, key, data, isExpanded, serialNumber) {
+  const section = document.createElement("div");
+  section.className = "post-copy-accordion-item";
+  
+  const header = document.createElement("div");
+  header.className = "post-copy-accordion-header";
+  header.onclick = () => {
+    const content = section.querySelector(".post-copy-accordion-content");
+    const isCurrentlyExpanded = content.style.display === "flex";
+    content.style.display = isCurrentlyExpanded ? "none" : "flex";
+  };
+
+  const titleDiv = document.createElement("div");
+  titleDiv.className = "post-copy-accordion-title";
+  titleDiv.title = data.title || 'Untitled';
+  titleDiv.textContent = `${serialNumber}. ${data.title || 'Untitled'}`;
+  
+  const charCount = data.text.length;
+  const wordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
+  const counterDiv = document.createElement("div");
+  counterDiv.className = "post-copy-accordion-counter";
+  counterDiv.textContent = `${wordCount}w | ${charCount}c`;
+
+  header.appendChild(titleDiv);
+  header.appendChild(counterDiv);
+
+  const content = document.createElement("div");
+  content.className = "post-copy-accordion-content";
+  content.style.display = isExpanded ? "flex" : "none";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "post-copy-clipboard-textarea";
+  textarea.value = data.text;
+  
+  // Update data on edit
+  textarea.addEventListener("input", () => {
+    data.text = textarea.value;
+    chrome.storage.local.set({ [key]: data });
+    
+    // Update local counters
+    const newCharCount = data.text.length;
+    const newWordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
+    counterDiv.textContent = `${newWordCount}w | ${newCharCount}c`;
+  });
+
+  const localFooter = document.createElement("div");
+  localFooter.className = "post-copy-local-footer";
+  
+  const localClearBtn = document.createElement("button");
+  localClearBtn.className = "post-copy-btn post-copy-local-btn";
+  localClearBtn.textContent = "Clear";
+  localClearBtn.onclick = () => {
+    chrome.storage.local.remove(key, () => {
+      loadDataToUI(); // reload UI
+    });
+  };
+
+  const localCopyBtn = document.createElement("button");
+  localCopyBtn.className = "post-copy-btn post-copy-local-btn";
+  localCopyBtn.style.backgroundColor = "#e0f0ff";
+  localCopyBtn.style.borderColor = "#b3d8ff";
+  localCopyBtn.style.color = "#0056b3";
+  localCopyBtn.textContent = "Copy";
+  localCopyBtn.onclick = () => {
+    navigator.clipboard.writeText(data.text).then(() => {
+      const originalText = localCopyBtn.textContent;
+      localCopyBtn.textContent = "Copied!";
+      setTimeout(() => { localCopyBtn.textContent = originalText; }, 2000);
+    });
+  };
+
+  localFooter.appendChild(localClearBtn);
+  localFooter.appendChild(localCopyBtn);
+
+  content.appendChild(textarea);
+  content.appendChild(localFooter);
+
+  section.appendChild(header);
+  section.appendChild(content);
+  container.appendChild(section);
+  
+  if (isExpanded) {
+    // Scroll to bottom of the specific textarea
+    setTimeout(() => { textarea.scrollTop = textarea.scrollHeight; }, 0);
+  }
 }
 
 function makeDraggable(elmnt, header) {
