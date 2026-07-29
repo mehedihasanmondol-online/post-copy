@@ -1,4 +1,10 @@
 let uiContainer = null;
+let loadDataDebounceTimer = null;
+
+function loadDataToUIDebounced() {
+  clearTimeout(loadDataDebounceTimer);
+  loadDataDebounceTimer = setTimeout(loadDataToUI, 50);
+}
 const STORAGE_KEY = `post_copy_${window.location.href.split('?')[0].split('#')[0]}`;
 const PAGE_TITLE = document.title || window.location.hostname;
 const CURRENT_HOSTNAME = window.location.hostname;
@@ -95,7 +101,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 window.addEventListener("focus", () => {
   checkAutoOpen();
   if (uiContainer && uiContainer.style.display !== "none") {
-    loadDataToUI();
+    loadDataToUIDebounced();
   }
 });
 
@@ -103,7 +109,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     checkAutoOpen();
     if (uiContainer && uiContainer.style.display !== "none") {
-      loadDataToUI();
+      loadDataToUIDebounced();
     }
   }
 });
