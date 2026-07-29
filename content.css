@@ -75,8 +75,9 @@
 }
 
 .post-copy-accordion-header {
-  padding: 10px;
-  background-color: #f9f9f9;
+  padding: 10px 12px;
+  background-color: #e9ecef;
+  border-bottom: 1px solid #ced4da;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -85,7 +86,7 @@
 }
 
 .post-copy-accordion-header:hover {
-  background-color: #eaeaea;
+  background-color: #dee2e6;
 }
 
 .post-copy-accordion-title {
