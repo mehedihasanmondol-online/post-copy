@@ -1,0 +1,111 @@
+#post-copy-clipboard-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  height: 400px;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2147483647; /* Max z-index to stay on top */
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #333;
+  box-sizing: border-box;
+  resize: both;
+  overflow: hidden;
+  min-width: 200px;
+  min-height: 200px;
+}
+
+#post-copy-clipboard-header {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  cursor: grab;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+}
+
+#post-copy-clipboard-header:active {
+  cursor: grabbing;
+}
+
+#post-copy-clipboard-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0;
+  pointer-events: none;
+}
+
+#post-copy-clipboard-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
+}
+
+#post-copy-clipboard-close:hover {
+  color: #000;
+}
+
+#post-copy-clipboard-textarea {
+  flex-grow: 1;
+  border: none;
+  padding: 10px;
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  background-color: #fafafa;
+  color: #333;
+}
+
+#post-copy-clipboard-footer {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.post-copy-btn {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.post-copy-btn:hover {
+  background-color: #e9e9e9;
+}
+
+#post-copy-btn-copy {
+  background-color: #007bff;
+  color: white;
+  border-color: #006ce0;
+}
+
+#post-copy-btn-copy:hover {
+  background-color: #006ce0;
+}
+
+#post-copy-btn-clear {
+  color: #dc3545;
+}

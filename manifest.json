@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Post-Copy Clipboard",
+  "version": "1.0",
+  "description": "Automatically append copied text to a resizable, draggable clipboard unique to each webpage.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Toggle Clipboard"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ]
+}
