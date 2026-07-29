@@ -7,7 +7,20 @@ function loadDataToUIDebounced() {
 }
 
 const STORAGE_KEY = `post_copy_${window.location.href.split('?')[0].split('#')[0]}`;
-const PAGE_TITLE = document.title || window.location.hostname;
+// Smart title: prefer <h1> content; fall back to document.title with tagline stripped.
+// Tagline patterns: "Article - Site" | "Article | Site" | "Article – Site"
+function getPageTitle() {
+  const h1 = document.querySelector('h1');
+  if (h1) {
+    const h1Text = h1.innerText.trim();
+    if (h1Text.length > 0) return h1Text;
+  }
+  const raw = document.title || window.location.hostname;
+  // Strip everything from the last occurrence of " - ", " | ", or " – "
+  const stripped = raw.split(/ [\-|\u2013\u2014] /)[0].trim();
+  return stripped.length > 0 ? stripped : raw;
+}
+const PAGE_TITLE = getPageTitle();
 const CURRENT_HOSTNAME = window.location.hostname;
 const AUTO_DOMAINS_KEY = "post_copy_auto_domains";
 
@@ -249,7 +262,7 @@ function createUIWrapper() {
         }
       }
       clipboards.sort((a, b) => a.timestamp - b.timestamp);
-      const titlesText = clipboards.map((c, i) => `${i + 1}. ${c.title || 'Untitled'}`).join("\n");
+      const titlesText = clipboards.map(c => c.title || 'Untitled').join("\n");
       if (!titlesText) return;
       navigator.clipboard.writeText(titlesText).then(() => {
         const statusEl = document.getElementById("post-copy-clipboard-status");
