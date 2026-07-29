@@ -26,6 +26,9 @@ document.addEventListener("copy", (e) => {
 });
 
 function appendData(text) {
+  const statusEl = document.getElementById("post-copy-clipboard-status");
+  if (statusEl) statusEl.textContent = "Saving...";
+
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     let currentText = result[STORAGE_KEY] || "";
     if (currentText.length > 0) {
@@ -39,6 +42,13 @@ function appendData(text) {
         textarea.value = currentText;
         updateCounters();
         scrollToBottom();
+      }
+      
+      if (statusEl) {
+        statusEl.textContent = "Saved!";
+        setTimeout(() => {
+          if (statusEl.textContent === "Saved!") statusEl.textContent = "";
+        }, 1000);
       }
     });
   });
@@ -101,16 +111,28 @@ function createUI() {
   const header = document.createElement("div");
   header.id = "post-copy-clipboard-header";
   
+  const headerLeft = document.createElement("div");
+  headerLeft.style.display = "flex";
+  headerLeft.style.alignItems = "center";
+  headerLeft.style.gap = "8px";
+
   const title = document.createElement("p");
   title.id = "post-copy-clipboard-title";
   title.textContent = "Post-Copy Clipboard";
+
+  const status = document.createElement("span");
+  status.id = "post-copy-clipboard-status";
+  status.textContent = "";
+
+  headerLeft.appendChild(title);
+  headerLeft.appendChild(status);
 
   const closeBtn = document.createElement("button");
   closeBtn.id = "post-copy-clipboard-close";
   closeBtn.innerHTML = "&times;";
   closeBtn.onclick = () => { uiContainer.style.display = "none"; };
 
-  header.appendChild(title);
+  header.appendChild(headerLeft);
   header.appendChild(closeBtn);
 
   // Textarea

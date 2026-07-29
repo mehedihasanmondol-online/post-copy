@@ -119,3 +119,9 @@
   border-top: 1px solid #e0e0e0;
   font-family: inherit;
 }
+
+#post-copy-clipboard-status {
+  font-size: 12px;
+  color: #007bff;
+  font-weight: 500;
+}
