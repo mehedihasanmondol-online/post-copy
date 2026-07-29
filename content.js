@@ -72,6 +72,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+window.addEventListener("focus", () => {
+  if (uiContainer && uiContainer.style.display !== "none") {
+    loadDataToUI();
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && uiContainer && uiContainer.style.display !== "none") {
+    loadDataToUI();
+  }
+});
+
 function toggleUI() {
   if (uiContainer) {
     if (uiContainer.style.display === "none") {
