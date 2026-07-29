@@ -37,6 +37,8 @@ function appendData(text) {
       // Update UI if it's open
       if (textarea) {
         textarea.value = currentText;
+        updateCounters();
+        scrollToBottom();
       }
     });
   });
@@ -67,8 +69,28 @@ function loadDataToUI() {
   chrome.storage.local.get([STORAGE_KEY], (result) => {
     if (textarea) {
       textarea.value = result[STORAGE_KEY] || "";
+      updateCounters();
+      scrollToBottom();
     }
   });
+}
+
+function updateCounters() {
+  if (!textarea) return;
+  const text = textarea.value;
+  const charCount = text.length;
+  const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  
+  const countersEl = document.getElementById("post-copy-clipboard-counters");
+  if (countersEl) {
+    countersEl.textContent = `${wordCount} words | ${charCount} chars`;
+  }
+}
+
+function scrollToBottom() {
+  if (textarea) {
+    textarea.scrollTop = textarea.scrollHeight;
+  }
 }
 
 function createUI() {
@@ -98,7 +120,13 @@ function createUI() {
   textarea.addEventListener("input", () => {
     // Save manual edits
     chrome.storage.local.set({ [STORAGE_KEY]: textarea.value });
+    updateCounters();
   });
+
+  // Counters
+  const countersDiv = document.createElement("div");
+  countersDiv.id = "post-copy-clipboard-counters";
+  countersDiv.textContent = "0 words | 0 chars";
 
   // Footer
   const footer = document.createElement("div");
@@ -111,6 +139,7 @@ function createUI() {
   clearBtn.onclick = () => {
     chrome.storage.local.set({ [STORAGE_KEY]: "" }, () => {
       textarea.value = "";
+      updateCounters();
     });
   };
 
@@ -131,6 +160,7 @@ function createUI() {
 
   uiContainer.appendChild(header);
   uiContainer.appendChild(textarea);
+  uiContainer.appendChild(countersDiv);
   uiContainer.appendChild(footer);
   document.body.appendChild(uiContainer);
 
