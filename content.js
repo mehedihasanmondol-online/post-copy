@@ -125,19 +125,16 @@ function createUIWrapper() {
   // Global Footer
   const footer = document.createElement("div");
   footer.id = "post-copy-clipboard-footer";
+  footer.style.alignItems = "center";
   
   const globalCounterDiv = document.createElement("div");
   globalCounterDiv.id = "post-copy-global-counter";
   globalCounterDiv.className = "post-copy-local-counter";
-  globalCounterDiv.style.width = "100%";
-  globalCounterDiv.style.marginBottom = "8px";
-  globalCounterDiv.style.textAlign = "center";
-  globalCounterDiv.textContent = "0 words | 0 chars";
+  globalCounterDiv.textContent = "Total: 0 words | 0 chars";
 
   const btnContainer = document.createElement("div");
   btnContainer.style.display = "flex";
   btnContainer.style.gap = "10px";
-  btnContainer.style.width = "100%";
 
   const clearAllBtn = document.createElement("button");
   clearAllBtn.id = "post-copy-btn-clear";
@@ -227,7 +224,7 @@ function loadDataToUI() {
 
     const globalCounter = document.getElementById("post-copy-global-counter");
     if (globalCounter) {
-      globalCounter.textContent = `Total: ${totalWords} words | ${totalChars} chars`;
+      globalCounter.textContent = `Total: ${totalWords}w | ${totalChars}c`;
     }
   });
 }

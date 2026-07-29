@@ -136,7 +136,7 @@
   background-color: #f5f5f5;
   border-top: 1px solid #e0e0e0;
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -157,6 +157,7 @@
   font-size: 13px;
   font-weight: 500;
   transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .post-copy-btn:hover {
