@@ -125,6 +125,19 @@ function createUIWrapper() {
   // Global Footer
   const footer = document.createElement("div");
   footer.id = "post-copy-clipboard-footer";
+  
+  const globalCounterDiv = document.createElement("div");
+  globalCounterDiv.id = "post-copy-global-counter";
+  globalCounterDiv.className = "post-copy-local-counter";
+  globalCounterDiv.style.width = "100%";
+  globalCounterDiv.style.marginBottom = "8px";
+  globalCounterDiv.style.textAlign = "center";
+  globalCounterDiv.textContent = "0 words | 0 chars";
+
+  const btnContainer = document.createElement("div");
+  btnContainer.style.display = "flex";
+  btnContainer.style.gap = "10px";
+  btnContainer.style.width = "100%";
 
   const clearAllBtn = document.createElement("button");
   clearAllBtn.id = "post-copy-btn-clear";
@@ -167,8 +180,11 @@ function createUIWrapper() {
     });
   };
 
-  footer.appendChild(clearAllBtn);
-  footer.appendChild(copyAllBtn);
+  btnContainer.appendChild(clearAllBtn);
+  btnContainer.appendChild(copyAllBtn);
+  
+  footer.appendChild(globalCounterDiv);
+  footer.appendChild(btnContainer);
 
   uiContainer.appendChild(header);
   uiContainer.appendChild(accordionContainer);
@@ -198,15 +214,21 @@ function loadDataToUI() {
     // Sort chronologically (oldest timestamp first)
     clipboards.sort((a, b) => a.data.timestamp - b.data.timestamp);
 
-    if (clipboards.length === 0) {
-      container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
-      return;
-    }
+    let totalChars = 0;
+    let totalWords = 0;
 
     clipboards.forEach((item, index) => {
       const isCurrentPage = item.key === STORAGE_KEY;
       createAccordionItem(container, item.key, item.data, isCurrentPage, index + 1);
+      
+      totalChars += item.data.text.length;
+      totalWords += item.data.text.trim() === "" ? 0 : item.data.text.trim().split(/\s+/).length;
     });
+
+    const globalCounter = document.getElementById("post-copy-global-counter");
+    if (globalCounter) {
+      globalCounter.textContent = `Total: ${totalWords} words | ${totalChars} chars`;
+    }
   });
 }
 
@@ -227,14 +249,13 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber) {
   titleDiv.title = data.title || 'Untitled';
   titleDiv.textContent = `${serialNumber}. ${data.title || 'Untitled'}`;
   
+  header.appendChild(titleDiv);
+
   const charCount = data.text.length;
   const wordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
   const counterDiv = document.createElement("div");
-  counterDiv.className = "post-copy-accordion-counter";
-  counterDiv.textContent = `${wordCount}w | ${charCount}c`;
-
-  header.appendChild(titleDiv);
-  header.appendChild(counterDiv);
+  counterDiv.className = "post-copy-local-counter";
+  counterDiv.textContent = `${wordCount} words | ${charCount} chars`;
 
   const content = document.createElement("div");
   content.className = "post-copy-accordion-content";
@@ -252,11 +273,15 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber) {
     // Update local counters
     const newCharCount = data.text.length;
     const newWordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
-    counterDiv.textContent = `${newWordCount}w | ${newCharCount}c`;
+    counterDiv.textContent = `${newWordCount} words | ${newCharCount} chars`;
+    
+    // Global counters get updated when UI is fully reloaded, but for live updates on typing we can just let loadDataToUI handle it if needed.
+    // For live global update, we might just call loadDataToUI(), but that resets focus. 
   });
 
   const localFooter = document.createElement("div");
   localFooter.className = "post-copy-local-footer";
+  localFooter.style.alignItems = "center";
   
   const localClearBtn = document.createElement("button");
   localClearBtn.className = "post-copy-btn post-copy-local-btn";
@@ -281,6 +306,7 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber) {
     });
   };
 
+  localFooter.appendChild(counterDiv);
   localFooter.appendChild(localClearBtn);
   localFooter.appendChild(localCopyBtn);
 
