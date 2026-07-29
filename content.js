@@ -103,11 +103,42 @@ function createUIWrapper() {
   title.id = "post-copy-clipboard-title";
   title.textContent = "Post-Copy Clipboard";
 
+  const historyBtn = document.createElement("button");
+  historyBtn.id = "post-copy-history-btn";
+  historyBtn.innerHTML = "🕒";
+  historyBtn.title = "Copy last cleared history";
+  historyBtn.style.background = "none";
+  historyBtn.style.border = "none";
+  historyBtn.style.cursor = "pointer";
+  historyBtn.style.fontSize = "14px";
+  historyBtn.style.padding = "0";
+  historyBtn.onclick = () => {
+    chrome.storage.local.get(["post_copy_history_cache"], (result) => {
+      const historyText = result["post_copy_history_cache"];
+      if (historyText) {
+        navigator.clipboard.writeText(historyText).then(() => {
+          const statusEl = document.getElementById("post-copy-clipboard-status");
+          if (statusEl) {
+             statusEl.textContent = "History Copied!";
+             setTimeout(() => { if (statusEl.textContent === "History Copied!") statusEl.textContent = ""; }, 2000);
+          }
+        });
+      } else {
+        const statusEl = document.getElementById("post-copy-clipboard-status");
+        if (statusEl) {
+           statusEl.textContent = "No history";
+           setTimeout(() => { if (statusEl.textContent === "No history") statusEl.textContent = ""; }, 2000);
+        }
+      }
+    });
+  };
+
   const status = document.createElement("span");
   status.id = "post-copy-clipboard-status";
   status.textContent = "";
 
   headerLeft.appendChild(title);
+  headerLeft.appendChild(historyBtn);
   headerLeft.appendChild(status);
 
   const closeBtn = document.createElement("button");
@@ -142,10 +173,30 @@ function createUIWrapper() {
   clearAllBtn.textContent = "Clear All";
   clearAllBtn.onclick = () => {
     chrome.storage.local.get(null, (items) => {
-      const keysToRemove = Object.keys(items).filter(k => k.startsWith("post_copy_"));
-      chrome.storage.local.remove(keysToRemove, () => {
-        loadDataToUI();
-      });
+      const clipboards = [];
+      const keysToRemove = [];
+      for (const [key, val] of Object.entries(items)) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
+           let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
+           clipboards.push(data);
+           keysToRemove.push(key);
+        }
+      }
+      
+      clipboards.sort((a, b) => a.timestamp - b.timestamp);
+      const allText = clipboards.map(c => c.text).join("\n\n---\n\n");
+      
+      if (allText.trim().length > 0) {
+        chrome.storage.local.set({ "post_copy_history_cache": allText }, () => {
+          chrome.storage.local.remove(keysToRemove, () => {
+            loadDataToUI();
+          });
+        });
+      } else {
+        chrome.storage.local.remove(keysToRemove, () => {
+          loadDataToUI();
+        });
+      }
     });
   };
 
@@ -158,7 +209,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_")) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -199,7 +250,7 @@ function loadDataToUI() {
   chrome.storage.local.get(null, (items) => {
     const clipboards = [];
     for (const [key, val] of Object.entries(items)) {
-      if (key.startsWith("post_copy_")) {
+      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
          let data = val;
          if (typeof val === 'string') {
             data = { text: val, title: "Unknown Page", timestamp: 0 };
