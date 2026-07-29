@@ -212,6 +212,39 @@ function createUIWrapper() {
     });
   };
 
+  // Copy all titles button
+  const copyTitlesBtn = document.createElement("button");
+  copyTitlesBtn.id = "post-copy-titles-btn";
+  copyTitlesBtn.innerHTML = "📋";
+  copyTitlesBtn.title = "Copy all page titles";
+  copyTitlesBtn.style.background = "none";
+  copyTitlesBtn.style.border = "none";
+  copyTitlesBtn.style.cursor = "pointer";
+  copyTitlesBtn.style.fontSize = "14px";
+  copyTitlesBtn.style.padding = "0";
+  copyTitlesBtn.style.lineHeight = "1";
+  copyTitlesBtn.onclick = () => {
+    chrome.storage.local.get(null, (items) => {
+      const clipboards = [];
+      for (const [key, val] of Object.entries(items)) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
+           let data = typeof val === 'string' ? { text: val, title: "Unknown Page", timestamp: 0 } : val;
+           clipboards.push(data);
+        }
+      }
+      clipboards.sort((a, b) => a.timestamp - b.timestamp);
+      const titlesText = clipboards.map((c, i) => `${i + 1}. ${c.title || 'Untitled'}`).join("\n");
+      if (!titlesText) return;
+      navigator.clipboard.writeText(titlesText).then(() => {
+        const statusEl = document.getElementById("post-copy-clipboard-status");
+        if (statusEl) {
+          statusEl.textContent = "Titles Copied!";
+          setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        }
+      });
+    });
+  };
+
   const status = document.createElement("span");
   status.id = "post-copy-clipboard-status";
   status.textContent = "";
@@ -219,6 +252,7 @@ function createUIWrapper() {
   headerLeft.appendChild(title);
   headerLeft.appendChild(historyBtn);
   headerLeft.appendChild(autoOpenBtn);
+  headerLeft.appendChild(copyTitlesBtn);
   headerLeft.appendChild(status);
 
   const closeBtn = document.createElement("button");
@@ -249,8 +283,9 @@ function createUIWrapper() {
 
   const clearAllBtn = document.createElement("button");
   clearAllBtn.id = "post-copy-btn-clear";
-  clearAllBtn.className = "post-copy-btn";
-  clearAllBtn.textContent = "Clear All";
+  clearAllBtn.className = "post-copy-btn post-copy-icon-btn";
+  clearAllBtn.innerHTML = "🗑️";
+  clearAllBtn.title = "Clear All";
   clearAllBtn.onclick = () => {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
