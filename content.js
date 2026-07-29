@@ -262,12 +262,22 @@ function loadDataToUI() {
     // Sort chronologically (oldest timestamp first)
     clipboards.sort((a, b) => a.data.timestamp - b.data.timestamp);
 
+    // Assign chronological serial numbers
+    clipboards.forEach((c, idx) => c.serialNumber = idx + 1);
+
+    // Pin active page to the top
+    const currentIndex = clipboards.findIndex(c => c.key === STORAGE_KEY);
+    if (currentIndex > -1) {
+      const currentItem = clipboards.splice(currentIndex, 1)[0];
+      clipboards.unshift(currentItem);
+    }
+
     let totalChars = 0;
     let totalWords = 0;
 
-    clipboards.forEach((item, index) => {
+    clipboards.forEach((item) => {
       const isCurrentPage = item.key === STORAGE_KEY;
-      createAccordionItem(container, item.key, item.data, isCurrentPage, index + 1);
+      createAccordionItem(container, item.key, item.data, isCurrentPage, item.serialNumber);
       
       totalChars += item.data.text.length;
       totalWords += item.data.text.trim() === "" ? 0 : item.data.text.trim().split(/\s+/).length;
