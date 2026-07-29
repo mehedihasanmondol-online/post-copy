@@ -264,7 +264,7 @@ function createUIWrapper() {
       }
       
       clipboards.sort((a, b) => a.timestamp - b.timestamp);
-      const allText = clipboards.map(c => c.text).join("\n\n---\n\n");
+      const allText = clipboards.map(c => c.text).join("\n\n");
       
       if (allText.trim().length > 0) {
         chrome.storage.local.set({ "post_copy_history_cache": allText }, () => {
@@ -298,7 +298,7 @@ function createUIWrapper() {
       
       if (clipboards.length === 0) return;
       
-      const allText = clipboards.map(c => c.text).join("\n\n---\n\n");
+      const allText = clipboards.map(c => c.text).join("\n\n");
       
       navigator.clipboard.writeText(allText).then(() => {
         const originalText = copyAllBtn.textContent;
