@@ -1,6 +1,26 @@
 let uiContainer = null;
 const STORAGE_KEY = `post_copy_${window.location.href.split('?')[0].split('#')[0]}`;
 const PAGE_TITLE = document.title || window.location.hostname;
+const CURRENT_HOSTNAME = window.location.hostname;
+const AUTO_DOMAINS_KEY = "post_copy_auto_domains";
+
+// --- Auto-open on page load ---
+function checkAutoOpen() {
+  chrome.storage.local.get([AUTO_DOMAINS_KEY], (result) => {
+    const domains = result[AUTO_DOMAINS_KEY] || [];
+    if (domains.includes(CURRENT_HOSTNAME)) {
+      if (!uiContainer) {
+        createUIWrapper();
+        loadDataToUI();
+      } else if (uiContainer.style.display === "none") {
+        uiContainer.style.display = "flex";
+        loadDataToUI();
+      }
+    }
+  });
+}
+
+checkAutoOpen();
 
 // --- Clipboard Logic ---
 document.addEventListener("copy", (e) => {
@@ -73,14 +93,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 window.addEventListener("focus", () => {
+  checkAutoOpen();
   if (uiContainer && uiContainer.style.display !== "none") {
     loadDataToUI();
   }
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && uiContainer && uiContainer.style.display !== "none") {
-    loadDataToUI();
+  if (document.visibilityState === "visible") {
+    checkAutoOpen();
+    if (uiContainer && uiContainer.style.display !== "none") {
+      loadDataToUI();
+    }
   }
 });
 
@@ -145,12 +169,56 @@ function createUIWrapper() {
     });
   };
 
+  // Auto-open toggle button
+  const autoOpenBtn = document.createElement("button");
+  autoOpenBtn.id = "post-copy-autoopen-btn";
+  autoOpenBtn.style.background = "none";
+  autoOpenBtn.style.border = "none";
+  autoOpenBtn.style.cursor = "pointer";
+  autoOpenBtn.style.fontSize = "14px";
+  autoOpenBtn.style.padding = "0";
+  autoOpenBtn.style.lineHeight = "1";
+
+  function refreshAutoOpenBtn() {
+    chrome.storage.local.get([AUTO_DOMAINS_KEY], (result) => {
+      const domains = result[AUTO_DOMAINS_KEY] || [];
+      const isEnabled = domains.includes(CURRENT_HOSTNAME);
+      autoOpenBtn.innerHTML = isEnabled ? "📌" : "📌";
+      autoOpenBtn.title = isEnabled
+        ? `Auto-open ON for ${CURRENT_HOSTNAME} — click to disable`
+        : `Auto-open OFF for ${CURRENT_HOSTNAME} — click to enable`;
+      autoOpenBtn.style.opacity = isEnabled ? "1" : "0.35";
+    });
+  }
+  refreshAutoOpenBtn();
+
+  autoOpenBtn.onclick = () => {
+    chrome.storage.local.get([AUTO_DOMAINS_KEY], (result) => {
+      let domains = result[AUTO_DOMAINS_KEY] || [];
+      const isEnabled = domains.includes(CURRENT_HOSTNAME);
+      if (isEnabled) {
+        domains = domains.filter(d => d !== CURRENT_HOSTNAME);
+      } else {
+        domains.push(CURRENT_HOSTNAME);
+      }
+      chrome.storage.local.set({ [AUTO_DOMAINS_KEY]: domains }, () => {
+        refreshAutoOpenBtn();
+        const statusEl = document.getElementById("post-copy-clipboard-status");
+        if (statusEl) {
+          statusEl.textContent = !isEnabled ? "Auto-open ON" : "Auto-open OFF";
+          setTimeout(() => { statusEl.textContent = ""; }, 2000);
+        }
+      });
+    });
+  };
+
   const status = document.createElement("span");
   status.id = "post-copy-clipboard-status";
   status.textContent = "";
 
   headerLeft.appendChild(title);
   headerLeft.appendChild(historyBtn);
+  headerLeft.appendChild(autoOpenBtn);
   headerLeft.appendChild(status);
 
   const closeBtn = document.createElement("button");
@@ -188,7 +256,7 @@ function createUIWrapper() {
       const clipboards = [];
       const keysToRemove = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
            keysToRemove.push(key);
@@ -221,7 +289,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -262,7 +330,7 @@ function loadDataToUI() {
   chrome.storage.local.get(null, (items) => {
     const clipboards = [];
     for (const [key, val] of Object.entries(items)) {
-      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache") {
+      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
          let data = val;
          if (typeof val === 'string') {
             data = { text: val, title: "Unknown Page", timestamp: 0 };
@@ -282,6 +350,10 @@ function loadDataToUI() {
     if (currentIndex > -1) {
       const currentItem = clipboards.splice(currentIndex, 1)[0];
       clipboards.unshift(currentItem);
+    }
+
+    if (clipboards.length === 0) {
+      container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
     }
 
     let totalChars = 0;
@@ -344,9 +416,6 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber) {
     const newCharCount = data.text.length;
     const newWordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
     counterDiv.textContent = `${newWordCount} words | ${newCharCount} chars`;
-    
-    // Global counters get updated when UI is fully reloaded, but for live updates on typing we can just let loadDataToUI handle it if needed.
-    // For live global update, we might just call loadDataToUI(), but that resets focus. 
   });
 
   const localFooter = document.createElement("div");
