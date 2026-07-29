@@ -224,7 +224,7 @@ function loadDataToUI() {
 
     const globalCounter = document.getElementById("post-copy-global-counter");
     if (globalCounter) {
-      globalCounter.textContent = `Total: ${totalWords}w | ${totalChars}c`;
+      globalCounter.textContent = `Total: ${totalWords} words | ${totalChars} chars`;
     }
   });
 }
