@@ -5,10 +5,20 @@ function loadDataToUIDebounced() {
   clearTimeout(loadDataDebounceTimer);
   loadDataDebounceTimer = setTimeout(loadDataToUI, 50);
 }
+
 const STORAGE_KEY = `post_copy_${window.location.href.split('?')[0].split('#')[0]}`;
 const PAGE_TITLE = document.title || window.location.hostname;
 const CURRENT_HOSTNAME = window.location.hostname;
 const AUTO_DOMAINS_KEY = "post_copy_auto_domains";
+
+// --- Guard against sites that replace/clear the DOM (e.g. SPA frameworks, ad loaders) ---
+// If our container exists but gets removed by the page, re-inject it immediately.
+const domGuardObserver = new MutationObserver(() => {
+  if (uiContainer && !document.documentElement.contains(uiContainer)) {
+    document.documentElement.appendChild(uiContainer);
+  }
+});
+domGuardObserver.observe(document.documentElement, { childList: true, subtree: true });
 
 // --- Auto-open on page load ---
 function checkAutoOpen() {
@@ -358,7 +368,7 @@ function createUIWrapper() {
   uiContainer.appendChild(header);
   uiContainer.appendChild(accordionContainer);
   uiContainer.appendChild(footer);
-  document.body.appendChild(uiContainer);
+  document.documentElement.appendChild(uiContainer);
 
   makeDraggable(uiContainer, header);
 }
