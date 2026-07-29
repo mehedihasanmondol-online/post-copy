@@ -91,11 +91,9 @@
 .post-copy-accordion-title {
   font-weight: 500;
   font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
   color: #111;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .post-copy-accordion-counter {
