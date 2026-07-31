@@ -35,18 +35,26 @@ domGuardObserver.observe(document.documentElement, { childList: true, subtree: t
 
 // --- Auto-open on page load ---
 function checkAutoOpen() {
-  chrome.storage.local.get([AUTO_DOMAINS_KEY], (result) => {
-    const domains = result[AUTO_DOMAINS_KEY] || [];
-    if (domains.includes(CURRENT_HOSTNAME)) {
-      if (!uiContainer) {
-        createUIWrapper();
-        loadDataToUI();
-      } else if (uiContainer.style.display === "none") {
-        uiContainer.style.display = "flex";
-        loadDataToUI();
+  try {
+    chrome.storage.local.get([AUTO_DOMAINS_KEY], (result) => {
+      const domains = result[AUTO_DOMAINS_KEY] || [];
+      if (domains.includes(CURRENT_HOSTNAME)) {
+        if (!uiContainer) {
+          createUIWrapper();
+          loadDataToUI();
+        } else if (uiContainer.style.display === "none") {
+          uiContainer.style.display = "flex";
+          loadDataToUI();
+        }
       }
+    });
+  } catch (e) {
+    if (e.message.includes('Extension context invalidated')) {
+      console.warn("Post-Copy Clipboard: Extension was updated. Please refresh this page.");
+    } else {
+      console.error(e);
     }
-  });
+  }
 }
 
 checkAutoOpen();
@@ -409,68 +417,78 @@ function loadDataToUI() {
   if (!container) return;
   container.innerHTML = ""; // Clear existing
 
-  chrome.storage.local.get(null, (items) => {
-    // --- Duplication Check ---
-    const duplicateString = items["post_copy_duplicate_titles"] || "";
-    const duplicateTitles = duplicateString.split("\n").map(t => t.trim()).filter(t => t.length > 0);
-    const isDuplicate = duplicateTitles.some(t => t.toLowerCase() === PAGE_TITLE.toLowerCase());
-    if (uiContainer) {
-      if (isDuplicate) {
-        uiContainer.classList.add("post-copy-duplicate-warning");
-      } else {
-        uiContainer.classList.remove("post-copy-duplicate-warning");
+  try {
+    chrome.storage.local.get(null, (items) => {
+      // --- Duplication Check ---
+      const duplicateString = items["post_copy_duplicate_titles"] || "";
+      const duplicateTitles = duplicateString.split("\n").map(t => t.trim()).filter(t => t.length > 0);
+      const isDuplicate = duplicateTitles.some(t => t.toLowerCase() === PAGE_TITLE.toLowerCase());
+      if (uiContainer) {
+        if (isDuplicate) {
+          uiContainer.classList.add("post-copy-duplicate-warning");
+        } else {
+          uiContainer.classList.remove("post-copy-duplicate-warning");
+        }
       }
-    }
 
-    const clipboards = [];
-    for (const [key, val] of Object.entries(items)) {
-      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
-         let data = val;
-         if (typeof val === 'string') {
-            data = { text: val, title: "Unknown Page", timestamp: 0 };
-         }
-         clipboards.push({ key, data });
+      const clipboards = [];
+      for (const [key, val] of Object.entries(items)) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
+           let data = val;
+           if (typeof val === 'string') {
+              data = { text: val, title: "Unknown Page", timestamp: 0 };
+           }
+           clipboards.push({ key, data });
+        }
       }
-    }
 
-    // Sort chronologically (oldest timestamp first)
-    clipboards.sort((a, b) => a.data.timestamp - b.data.timestamp);
+      // Sort chronologically (oldest timestamp first)
+      clipboards.sort((a, b) => a.data.timestamp - b.data.timestamp);
 
-    // Assign chronological serial numbers
-    clipboards.forEach((c, idx) => c.serialNumber = idx + 1);
+      // Assign chronological serial numbers
+      clipboards.forEach((c, idx) => c.serialNumber = idx + 1);
 
-    // Pin active page to the top
-    const currentIndex = clipboards.findIndex(c => c.key === STORAGE_KEY);
-    if (currentIndex > -1) {
-      const currentItem = clipboards.splice(currentIndex, 1)[0];
-      clipboards.unshift(currentItem);
-    }
+      // Pin active page to the top
+      const currentIndex = clipboards.findIndex(c => c.key === STORAGE_KEY);
+      if (currentIndex > -1) {
+        const currentItem = clipboards.splice(currentIndex, 1)[0];
+        clipboards.unshift(currentItem);
+      }
 
-    if (clipboards.length === 0) {
-      container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
-    }
+      if (clipboards.length === 0) {
+        container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
+      }
 
-    let totalChars = 0;
-    let totalWords = 0;
+      let totalChars = 0;
+      let totalWords = 0;
 
-    clipboards.forEach((item) => {
-      const isCurrentPage = item.key === STORAGE_KEY;
-      createAccordionItem(container, item.key, item.data, isCurrentPage, item.serialNumber);
-      
-      totalChars += item.data.text.length;
-      totalWords += item.data.text.trim() === "" ? 0 : item.data.text.trim().split(/\s+/).length;
+      clipboards.forEach((item) => {
+        const isCurrentPage = item.key === STORAGE_KEY;
+        createAccordionItem(container, item.key, item.data, isCurrentPage, item.serialNumber, duplicateTitles);
+        
+        totalChars += item.data.text.length;
+        totalWords += item.data.text.trim() === "" ? 0 : item.data.text.trim().split(/\s+/).length;
+      });
+
+      const globalCounter = document.getElementById("post-copy-global-counter");
+      if (globalCounter) {
+        globalCounter.textContent = `Total: ${totalWords} words | ${totalChars} chars`;
+      }
     });
-
-    const globalCounter = document.getElementById("post-copy-global-counter");
-    if (globalCounter) {
-      globalCounter.textContent = `Total: ${totalWords} words | ${totalChars} chars`;
+  } catch (e) {
+    if (e.message.includes('Extension context invalidated')) {
+      console.warn("Post-Copy Clipboard: Extension was updated. Please refresh this page.");
     }
-  });
+  }
 }
 
-function createAccordionItem(container, key, data, isExpanded, serialNumber) {
+function createAccordionItem(container, key, data, isExpanded, serialNumber, duplicateTitles) {
   const section = document.createElement("div");
   section.className = "post-copy-accordion-item";
+  
+  if (duplicateTitles && duplicateTitles.some(t => t.toLowerCase() === (data.title || '').toLowerCase())) {
+    section.classList.add("post-copy-duplicate-item");
+  }
   
   const header = document.createElement("div");
   header.className = "post-copy-accordion-header";
