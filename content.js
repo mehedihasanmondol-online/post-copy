@@ -686,7 +686,12 @@ function openDuplicateCheckDialog() {
     dialog.appendChild(btnRow);
     uiContainer.appendChild(dialog);
   } else {
-    dialog.style.display = "flex";
+    if (dialog.style.display !== "none") {
+      dialog.style.display = "none";
+      return;
+    } else {
+      dialog.style.display = "flex";
+    }
   }
 
   // Load existing data
