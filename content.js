@@ -24,6 +24,12 @@ const PAGE_TITLE = getPageTitle();
 const CURRENT_HOSTNAME = window.location.hostname;
 const AUTO_DOMAINS_KEY = "post_copy_auto_domains";
 
+// Helper to normalize titles for duplicate checking (strips specific punctuation from start/end)
+function normalizeForDuplicateCheck(title) {
+  if (!title) return '';
+  return title.trim().replace(/^[.,\-()]+|[.,\-()]+$/g, '').trim().toLowerCase();
+}
+
 // --- Guard against sites that replace/clear the DOM (e.g. SPA frameworks, ad loaders) ---
 // If our container exists but gets removed by the page, re-inject it immediately.
 const domGuardObserver = new MutationObserver(() => {
@@ -422,7 +428,9 @@ function loadDataToUI() {
       // --- Duplication Check ---
       const duplicateString = items["post_copy_duplicate_titles"] || "";
       const duplicateTitles = duplicateString.split("\n").map(t => t.trim()).filter(t => t.length > 0);
-      const isDuplicate = duplicateTitles.some(t => t.toLowerCase() === PAGE_TITLE.toLowerCase());
+      const normalizedDuplicateTitles = duplicateTitles.map(normalizeForDuplicateCheck).filter(t => t.length > 0);
+      const normalizedPageTitle = normalizeForDuplicateCheck(PAGE_TITLE);
+      const isDuplicate = normalizedDuplicateTitles.includes(normalizedPageTitle);
       if (uiContainer) {
         if (isDuplicate) {
           uiContainer.classList.add("post-copy-duplicate-warning");
@@ -464,7 +472,7 @@ function loadDataToUI() {
 
       clipboards.forEach((item) => {
         const isCurrentPage = item.key === STORAGE_KEY;
-        createAccordionItem(container, item.key, item.data, isCurrentPage, item.serialNumber, duplicateTitles);
+        createAccordionItem(container, item.key, item.data, isCurrentPage, item.serialNumber, normalizedDuplicateTitles);
         
         totalChars += item.data.text.length;
         totalWords += item.data.text.trim() === "" ? 0 : item.data.text.trim().split(/\s+/).length;
@@ -482,11 +490,11 @@ function loadDataToUI() {
   }
 }
 
-function createAccordionItem(container, key, data, isExpanded, serialNumber, duplicateTitles) {
+function createAccordionItem(container, key, data, isExpanded, serialNumber, normalizedDuplicateTitles) {
   const section = document.createElement("div");
   section.className = "post-copy-accordion-item";
   
-  if (duplicateTitles && duplicateTitles.some(t => t.toLowerCase() === (data.title || '').toLowerCase())) {
+  if (normalizedDuplicateTitles && normalizedDuplicateTitles.includes(normalizeForDuplicateCheck(data.title))) {
     section.classList.add("post-copy-duplicate-item");
   }
   
