@@ -53,6 +53,11 @@ checkAutoOpen();
 
 // --- Clipboard Logic ---
 document.addEventListener("copy", (e) => {
+  // Only capture if the clipboard UI is open
+  if (!uiContainer || uiContainer.style.display === "none") {
+    return;
+  }
+
   // If the user is copying from our own UI, don't intercept/append it to itself!
   if (e.target && e.target.classList && e.target.classList.contains("post-copy-clipboard-textarea")) {
     return;
