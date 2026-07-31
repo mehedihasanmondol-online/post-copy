@@ -189,3 +189,8 @@
   padding: 5px 8px !important;
   font-size: 16px !important;
 }
+
+.post-copy-duplicate-warning {
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 15px rgba(220, 53, 69, 0.6) !important;
+}

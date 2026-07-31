@@ -261,7 +261,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
            let data = typeof val === 'string' ? { text: val, title: "Unknown Page", timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -279,6 +279,18 @@ function createUIWrapper() {
     });
   };
 
+  const duplicateCheckBtn = document.createElement("button");
+  duplicateCheckBtn.id = "post-copy-duplicate-btn";
+  duplicateCheckBtn.innerHTML = "💬";
+  duplicateCheckBtn.title = "Duplication Check";
+  duplicateCheckBtn.style.background = "none";
+  duplicateCheckBtn.style.border = "none";
+  duplicateCheckBtn.style.cursor = "pointer";
+  duplicateCheckBtn.style.fontSize = "14px";
+  duplicateCheckBtn.style.padding = "0";
+  duplicateCheckBtn.style.lineHeight = "1";
+  duplicateCheckBtn.onclick = openDuplicateCheckDialog;
+
   const status = document.createElement("span");
   status.id = "post-copy-clipboard-status";
   status.textContent = "";
@@ -287,6 +299,7 @@ function createUIWrapper() {
   headerLeft.appendChild(historyBtn);
   headerLeft.appendChild(autoOpenBtn);
   headerLeft.appendChild(copyTitlesBtn);
+  headerLeft.appendChild(duplicateCheckBtn);
   headerLeft.appendChild(status);
 
   const closeBtn = document.createElement("button");
@@ -325,7 +338,7 @@ function createUIWrapper() {
       const clipboards = [];
       const keysToRemove = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
            keysToRemove.push(key);
@@ -358,7 +371,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -397,9 +410,21 @@ function loadDataToUI() {
   container.innerHTML = ""; // Clear existing
 
   chrome.storage.local.get(null, (items) => {
+    // --- Duplication Check ---
+    const duplicateString = items["post_copy_duplicate_titles"] || "";
+    const duplicateTitles = duplicateString.split("\n").map(t => t.trim()).filter(t => t.length > 0);
+    const isDuplicate = duplicateTitles.some(t => t.toLowerCase() === PAGE_TITLE.toLowerCase());
+    if (uiContainer) {
+      if (isDuplicate) {
+        uiContainer.classList.add("post-copy-duplicate-warning");
+      } else {
+        uiContainer.classList.remove("post-copy-duplicate-warning");
+      }
+    }
+
     const clipboards = [];
     for (const [key, val] of Object.entries(items)) {
-      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY) {
+      if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
          let data = val;
          if (typeof val === 'string') {
             data = { text: val, title: "Unknown Page", timestamp: 0 };
@@ -564,4 +589,85 @@ function makeDraggable(elmnt, header) {
     document.onmouseup = null;
     document.onmousemove = null;
   }
+}
+
+function openDuplicateCheckDialog() {
+  let dialog = document.getElementById("post-copy-duplicate-dialog");
+  if (!dialog) {
+    dialog = document.createElement("div");
+    dialog.id = "post-copy-duplicate-dialog";
+    dialog.style.position = "absolute";
+    dialog.style.top = "50px";
+    dialog.style.left = "10px";
+    dialog.style.right = "10px";
+    dialog.style.bottom = "10px";
+    dialog.style.backgroundColor = "white";
+    dialog.style.zIndex = "1000";
+    dialog.style.display = "flex";
+    dialog.style.flexDirection = "column";
+    dialog.style.padding = "10px";
+    dialog.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+    dialog.style.borderRadius = "8px";
+    dialog.style.border = "1px solid #ccc";
+
+    const title = document.createElement("div");
+    title.textContent = "Paste Titles for Duplication Check (one per line)";
+    title.style.fontWeight = "bold";
+    title.style.marginBottom = "8px";
+    title.style.fontSize = "12px";
+
+    const textarea = document.createElement("textarea");
+    textarea.id = "post-copy-duplicate-textarea";
+    textarea.style.flexGrow = "1";
+    textarea.style.marginBottom = "8px";
+    textarea.style.resize = "none";
+    textarea.style.fontFamily = "inherit";
+    textarea.style.fontSize = "13px";
+    textarea.style.padding = "8px";
+    textarea.style.border = "1px solid #ccc";
+    textarea.style.borderRadius = "4px";
+
+    const btnRow = document.createElement("div");
+    btnRow.style.display = "flex";
+    btnRow.style.justifyContent = "flex-end";
+    btnRow.style.gap = "10px";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Close";
+    closeBtn.className = "post-copy-btn post-copy-local-btn";
+    closeBtn.onclick = () => {
+      dialog.style.display = "none";
+    };
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.className = "post-copy-btn post-copy-local-btn";
+    saveBtn.style.backgroundColor = "#007bff";
+    saveBtn.style.color = "white";
+    saveBtn.style.borderColor = "#006ce0";
+    saveBtn.onclick = () => {
+      chrome.storage.local.set({ "post_copy_duplicate_titles": textarea.value }, () => {
+        loadDataToUI(); // Re-run duplication check immediately
+        dialog.style.display = "none";
+      });
+    };
+
+    btnRow.appendChild(closeBtn);
+    btnRow.appendChild(saveBtn);
+
+    dialog.appendChild(title);
+    dialog.appendChild(textarea);
+    dialog.appendChild(btnRow);
+    uiContainer.appendChild(dialog);
+  } else {
+    dialog.style.display = "flex";
+  }
+
+  // Load existing data
+  chrome.storage.local.get(["post_copy_duplicate_titles"], (result) => {
+    const textarea = document.getElementById("post-copy-duplicate-textarea");
+    if (textarea) {
+      textarea.value = result["post_copy_duplicate_titles"] || "";
+    }
+  });
 }
