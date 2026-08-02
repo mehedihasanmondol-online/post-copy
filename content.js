@@ -509,7 +509,31 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
   const titleDiv = document.createElement("div");
   titleDiv.className = "post-copy-accordion-title";
   titleDiv.title = data.title || 'Untitled';
-  titleDiv.textContent = `${serialNumber}. ${data.title || 'Untitled'}`;
+  titleDiv.style.display = "flex";
+  titleDiv.style.alignItems = "center";
+  
+  const titleText = document.createElement("span");
+  titleText.textContent = `${serialNumber}. ${data.title || 'Untitled'}`;
+  titleDiv.appendChild(titleText);
+  
+  const titleCopyIcon = document.createElement("button");
+  titleCopyIcon.innerHTML = "📋";
+  titleCopyIcon.title = "Copy Title";
+  titleCopyIcon.style.background = "none";
+  titleCopyIcon.style.border = "none";
+  titleCopyIcon.style.cursor = "pointer";
+  titleCopyIcon.style.fontSize = "13px";
+  titleCopyIcon.style.padding = "0 0 0 8px";
+  titleCopyIcon.style.opacity = "0.7";
+  titleCopyIcon.onclick = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(data.title || 'Untitled').then(() => {
+      titleCopyIcon.innerHTML = "✅";
+      setTimeout(() => { titleCopyIcon.innerHTML = "📋"; }, 2000);
+    });
+  };
+  
+  titleDiv.appendChild(titleCopyIcon);
   
   header.appendChild(titleDiv);
 
