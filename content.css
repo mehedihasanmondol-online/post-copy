@@ -203,3 +203,27 @@
 .post-copy-duplicate-item .post-copy-accordion-header:hover {
   background-color: #cc0000;
 }
+
+.post-copy-copied-item .post-copy-accordion-header {
+  background-color: #d4edda;
+  border-bottom-color: #c3e6cb;
+}
+
+.post-copy-copied-item .post-copy-accordion-header:hover {
+  background-color: #c3e6cb;
+}
+
+#post-copy-clipboard-container.post-copy-copied-all {
+  border-color: #c3e6cb !important;
+}
+
+#post-copy-clipboard-container.post-copy-copied-all #post-copy-clipboard-header,
+#post-copy-clipboard-container.post-copy-copied-all #post-copy-accordion-container,
+#post-copy-clipboard-container.post-copy-copied-all #post-copy-clipboard-footer {
+  background-color: #d4edda !important;
+}
+
+#post-copy-clipboard-container.post-copy-copied-all .post-copy-accordion-header {
+  background-color: #c3e6cb !important;
+}
+

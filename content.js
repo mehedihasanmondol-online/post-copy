@@ -399,6 +399,9 @@ function createUIWrapper() {
       navigator.clipboard.writeText(allText).then(() => {
         const originalText = copyAllBtn.textContent;
         copyAllBtn.textContent = "Copied!";
+        if (uiContainer) {
+          uiContainer.classList.add("post-copy-copied-all");
+        }
         setTimeout(() => { copyAllBtn.textContent = originalText; }, 2000);
       });
     });
@@ -432,6 +435,7 @@ function loadDataToUI() {
       const normalizedPageTitle = normalizeForDuplicateCheck(PAGE_TITLE);
       const isDuplicate = normalizedDuplicateTitles.includes(normalizedPageTitle);
       if (uiContainer) {
+        uiContainer.classList.remove("post-copy-copied-all");
         if (isDuplicate) {
           uiContainer.classList.add("post-copy-duplicate-warning");
         } else {
@@ -560,6 +564,9 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
     const newCharCount = data.text.length;
     const newWordCount = data.text.trim() === "" ? 0 : data.text.trim().split(/\s+/).length;
     counterDiv.textContent = `${newWordCount} words | ${newCharCount} chars`;
+    
+    section.classList.remove("post-copy-copied-item");
+    if (uiContainer) uiContainer.classList.remove("post-copy-copied-all");
   });
 
   const localFooter = document.createElement("div");
@@ -585,6 +592,7 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
     navigator.clipboard.writeText(data.text).then(() => {
       const originalText = localCopyBtn.textContent;
       localCopyBtn.textContent = "Copied!";
+      section.classList.add("post-copy-copied-item");
       setTimeout(() => { localCopyBtn.textContent = originalText; }, 2000);
     });
   };
