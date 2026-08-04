@@ -278,7 +278,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles" && key !== "post_copy_all_copied") {
            let data = typeof val === 'string' ? { text: val, title: "Unknown Page", timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -355,7 +355,7 @@ function createUIWrapper() {
       const clipboards = [];
       const keysToRemove = ["post_copy_all_copied"];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles" && key !== "post_copy_all_copied") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
            keysToRemove.push(key);
@@ -388,7 +388,7 @@ function createUIWrapper() {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles" && key !== "post_copy_all_copied") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
            clipboards.push(data);
         }
@@ -454,7 +454,7 @@ function loadDataToUI() {
 
       const clipboards = [];
       for (const [key, val] of Object.entries(items)) {
-        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
+        if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles" && key !== "post_copy_all_copied") {
            let data = val;
            if (typeof val === 'string') {
               data = { text: val, title: "Unknown Page", timestamp: 0 };
