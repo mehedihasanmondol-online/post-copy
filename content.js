@@ -111,24 +111,27 @@ function appendData(text) {
       currentData.text += "\n\n";
     }
     currentData.text += text;
+    currentData.copied = false;
     
     // Keep original timestamp if it exists, otherwise set it
     if (!currentData.timestamp) {
        currentData.timestamp = Date.now();
     }
     
-    chrome.storage.local.set({ [STORAGE_KEY]: currentData }, () => {
-      // Re-render UI if it's open
-      if (uiContainer && uiContainer.style.display !== "none") {
-        loadDataToUI(); // Re-render the whole list to show changes
-      }
-      
-      if (statusEl) {
-        statusEl.textContent = "Saved!";
-        setTimeout(() => {
-          if (statusEl.textContent === "Saved!") statusEl.textContent = "";
-        }, 1000);
-      }
+    chrome.storage.local.remove(["post_copy_all_copied"], () => {
+      chrome.storage.local.set({ [STORAGE_KEY]: currentData }, () => {
+        // Re-render UI if it's open
+        if (uiContainer && uiContainer.style.display !== "none") {
+          loadDataToUI(); // Re-render the whole list to show changes
+        }
+        
+        if (statusEl) {
+          statusEl.textContent = "Saved!";
+          setTimeout(() => {
+            if (statusEl.textContent === "Saved!") statusEl.textContent = "";
+          }, 1000);
+        }
+      });
     });
   });
 }
@@ -350,7 +353,7 @@ function createUIWrapper() {
   clearAllBtn.onclick = () => {
     chrome.storage.local.get(null, (items) => {
       const clipboards = [];
-      const keysToRemove = [];
+      const keysToRemove = ["post_copy_all_copied"];
       for (const [key, val] of Object.entries(items)) {
         if (key.startsWith("post_copy_") && key !== "post_copy_history_cache" && key !== AUTO_DOMAINS_KEY && key !== "post_copy_duplicate_titles") {
            let data = typeof val === 'string' ? { text: val, timestamp: 0 } : val;
@@ -399,10 +402,12 @@ function createUIWrapper() {
       navigator.clipboard.writeText(allText).then(() => {
         const originalText = copyAllBtn.textContent;
         copyAllBtn.textContent = "Copied!";
-        if (uiContainer) {
-          uiContainer.classList.add("post-copy-copied-all");
-        }
-        setTimeout(() => { copyAllBtn.textContent = originalText; }, 2000);
+        chrome.storage.local.set({ "post_copy_all_copied": true }, () => {
+          if (uiContainer) {
+            uiContainer.classList.add("post-copy-copied-all");
+          }
+          setTimeout(() => { copyAllBtn.textContent = originalText; }, 2000);
+        });
       });
     });
   };
@@ -435,7 +440,11 @@ function loadDataToUI() {
       const normalizedPageTitle = normalizeForDuplicateCheck(PAGE_TITLE);
       const isDuplicate = normalizedDuplicateTitles.includes(normalizedPageTitle);
       if (uiContainer) {
-        uiContainer.classList.remove("post-copy-copied-all");
+        if (items["post_copy_all_copied"]) {
+          uiContainer.classList.add("post-copy-copied-all");
+        } else {
+          uiContainer.classList.remove("post-copy-copied-all");
+        }
         if (isDuplicate) {
           uiContainer.classList.add("post-copy-duplicate-warning");
         } else {
@@ -498,6 +507,10 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
   const section = document.createElement("div");
   section.className = "post-copy-accordion-item";
   
+  if (data.copied) {
+    section.classList.add("post-copy-copied-item");
+  }
+  
   if (normalizedDuplicateTitles && normalizedDuplicateTitles.includes(normalizeForDuplicateCheck(data.title))) {
     section.classList.add("post-copy-duplicate-item");
   }
@@ -558,6 +571,7 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
   // Update data on edit
   textarea.addEventListener("input", () => {
     data.text = textarea.value;
+    data.copied = false;
     chrome.storage.local.set({ [key]: data });
     
     // Update local counters
@@ -567,6 +581,7 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
     
     section.classList.remove("post-copy-copied-item");
     if (uiContainer) uiContainer.classList.remove("post-copy-copied-all");
+    chrome.storage.local.remove(["post_copy_all_copied"]);
   });
 
   const localFooter = document.createElement("div");
@@ -593,6 +608,10 @@ function createAccordionItem(container, key, data, isExpanded, serialNumber, nor
       const originalText = localCopyBtn.textContent;
       localCopyBtn.textContent = "Copied!";
       section.classList.add("post-copy-copied-item");
+      
+      data.copied = true;
+      chrome.storage.local.set({ [key]: data });
+      
       setTimeout(() => { localCopyBtn.textContent = originalText; }, 2000);
     });
   };
