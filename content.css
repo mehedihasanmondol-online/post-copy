@@ -227,3 +227,23 @@
   background-color: #c3e6cb !important;
 }
 
+.post-copy-accordion-item[draggable="true"] .post-copy-accordion-header {
+  cursor: grab;
+}
+
+.post-copy-accordion-item[draggable="true"] .post-copy-accordion-header:active {
+  cursor: grabbing;
+}
+
+.post-copy-dragging {
+  opacity: 0.4;
+}
+
+.post-copy-drag-over-top {
+  border-top: 2px dashed #007bff !important;
+}
+
+.post-copy-drag-over-bottom {
+  border-bottom: 2px dashed #007bff !important;
+}
+

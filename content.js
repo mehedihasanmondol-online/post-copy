@@ -507,9 +507,79 @@ function loadDataToUI() {
   }
 }
 
+function recalculateOrderAndSave() {
+  const container = document.getElementById("post-copy-accordion-container");
+  const items = Array.from(container.querySelectorAll(".post-copy-accordion-item"));
+  
+  chrome.storage.local.get(null, (storageItems) => {
+    const baseTime = Date.now();
+    items.forEach((itemEl, index) => {
+      const key = itemEl.dataset.key;
+      if (storageItems[key]) {
+        storageItems[key].timestamp = baseTime + index;
+        chrome.storage.local.set({ [key]: storageItems[key] });
+      }
+    });
+    setTimeout(loadDataToUI, 100); 
+  });
+}
+
 function createAccordionItem(container, key, data, isExpanded, serialNumber, normalizedDuplicateTitles) {
   const section = document.createElement("div");
   section.className = "post-copy-accordion-item";
+  section.dataset.key = key;
+  section.draggable = true;
+  
+  section.addEventListener("dragstart", (e) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", key);
+    section.classList.add("post-copy-dragging");
+  });
+  
+  section.addEventListener("dragend", () => {
+    section.classList.remove("post-copy-dragging");
+    document.querySelectorAll(".post-copy-accordion-item").forEach(item => {
+      item.classList.remove("post-copy-drag-over-top", "post-copy-drag-over-bottom");
+    });
+  });
+  
+  section.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const bounding = section.getBoundingClientRect();
+    const offset = bounding.y + (bounding.height / 2);
+    if (e.clientY - offset > 0) {
+      section.classList.add("post-copy-drag-over-bottom");
+      section.classList.remove("post-copy-drag-over-top");
+    } else {
+      section.classList.add("post-copy-drag-over-top");
+      section.classList.remove("post-copy-drag-over-bottom");
+    }
+  });
+
+  section.addEventListener("dragleave", () => {
+    section.classList.remove("post-copy-drag-over-top", "post-copy-drag-over-bottom");
+  });
+
+  section.addEventListener("drop", (e) => {
+    e.preventDefault();
+    section.classList.remove("post-copy-drag-over-top", "post-copy-drag-over-bottom");
+    
+    const draggedKey = e.dataTransfer.getData("text/plain");
+    if (draggedKey === key) return;
+    
+    const draggedEl = document.querySelector(`.post-copy-accordion-item[data-key="${draggedKey}"]`);
+    if (!draggedEl) return;
+    
+    const bounding = section.getBoundingClientRect();
+    const offset = bounding.y + (bounding.height / 2);
+    if (e.clientY - offset > 0) {
+      section.parentNode.insertBefore(draggedEl, section.nextSibling);
+    } else {
+      section.parentNode.insertBefore(draggedEl, section);
+    }
+    
+    recalculateOrderAndSave();
+  });
   
   if (data.copied) {
     section.classList.add("post-copy-copied-item");
