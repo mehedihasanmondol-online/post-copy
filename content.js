@@ -478,6 +478,10 @@ function loadDataToUI() {
 
       if (clipboards.length === 0) {
         container.innerHTML = "<div style='padding:20px; color:#666; text-align:center; font-size: 13px;'>No copied text found. Start copying to see it here!</div>";
+        if (items["post_copy_all_copied"]) {
+          chrome.storage.local.remove(["post_copy_all_copied"]);
+          if (uiContainer) uiContainer.classList.remove("post-copy-copied-all");
+        }
       }
 
       let totalChars = 0;
